@@ -38,6 +38,8 @@ namespace chocolatey.tests
             Environment.SetEnvironmentVariable(ApplicationParameters.ChocolateyInstallEnvironmentVariableName, string.Empty);
             MockLogger = new MockLogger();
             Log.InitializeWith(MockLogger);
+            // do not log trace messages
+            ILogExtensions.LogTraceMessages = false;
         }
 
         public virtual void before_everything()
@@ -141,6 +143,18 @@ namespace chocolatey.tests
     {
         public PendingAttribute(string reason)
             : base("Pending test - {0}".format_with(reason))
+        {
+        }
+    }
+
+    public class WindowsOnlyAttribute : PlatformAttribute
+    {
+        public WindowsOnlyAttribute()
+        {
+            Exclude = "Mono, Linux, MacOsX, Linux";
+        }
+
+        public WindowsOnlyAttribute(string platforms) : base(platforms)
         {
         }
     }
