@@ -1,0 +1,88 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "StefanScherer/windows_2022"
+  # Set Hostname to prevent error messages. https://github.com/hashicorp/vagrant/issues/12644
+  config.vm.hostname = 'chocolatey-tests'
+  config.vm.boot_timeout = 600
+
+  # windows
+  config.vm.guest = :windows
+  config.windows.halt_timeout = 60
+  config.windows.set_work_network = true
+
+  # winrm
+  config.vm.communicator = 'winrm'
+  config.winrm.username = 'vagrant'
+  config.winrm.password = 'vagrant'
+  # https://github.com/hashicorp/vagrant/issues/6430
+  config.winrm.retry_limit = 30
+  config.winrm.retry_delay = 10
+
+  config.vm.network :forwarded_port, guest: 5985, host: 14985, id: 'winrm', auto_correct: true
+  config.vm.network :forwarded_port, guest: 3389, host: 14389, id: 'rdp', auto_correct: true
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.gui = ENV['VM_GUI'] ? ENV['VM_GUI'].to_s.downcase == 'true' : true
+    vb.memory = ENV['VM_MEMORY'] ? ENV['VM_MEMORY'].to_i : 4096
+    vb.cpus = ENV['VM_CPU'] ? ENV['VM_CPU'].to_i : 2
+    vb.linked_clone = true
+    vb.customize ['modifyvm', :id, '--vram', '128']
+  end
+  config.vm.provider "hyperv" do |h|
+    h.memory = 4096
+    h.cpus = 2
+    h.linked_clone = true
+    h.enable_checkpoints = false
+  end
+
+  config.vm.synced_folder '../', '/chocoRoot'
+
+  config.vm.provision "shell", name: "prep", inline: <<-SHELL
+    cscript c:/windows/system32/slmgr.vbs /rearm | Out-Null
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    iex (irm https://community.chocolatey.org/install.ps1)
+
+    Write-Host "($(Get-Date -Format "dddd MM/dd/yyyy HH:mm:ss K")) We are going to install some prerequisites now. This could take some time"
+    $null = choco install git pester visualstudio2022community visualstudio2022-workload-manageddesktop netfx-4.8-devpack -y
+    Import-Module $env:ChocolateyInstall/helpers/chocolateyProfile.psm1
+    Update-SessionEnvironment
+    Write-Host "($(Get-Date -Format "dddd MM/dd/yyyy HH:mm:ss K")) Done installing software, now copying files"
+    # If you try to build on macOS, then run this, there are attributes on some files that cause the build to fail inside of the vagrant environment.
+    $null = robocopy c:/chocoRoot c:/code/choco /e /copy:dt
+  SHELL
+  config.vm.provision "shell", name: "build", inline: <<-SHELL
+    $null = robocopy c:/chocoRoot c:/code/choco /e /copy:dt /purge
+    Push-Location c:/code/choco
+    Write-Host "($(Get-Date -Format "dddd MM/dd/yyyy HH:mm:ss K")) Files have been copied, beginning build process."
+    $CakeOutput = ./build.bat --verbosity=diagnostic --target=CI --testExecutionType=none --shouldRunalyze=false --shouldRunNuGet=false 2>&1
+
+    if ($LastExitCode -ne 0) {
+        Set-Content c:/vagrant/buildOutput.log -Value $CakeOutput
+        Write-Host "The build has failed. Please see the buildOutput.log file for details"
+        exit $LastExitCode
+    }
+
+    Write-Host "($(Get-Date -Format "dddd MM/dd/yyyy HH:mm:ss K")) Build complete."
+  SHELL
+  config.vm.provision "shell", name: "clear-packages", inline: <<-SHELL
+    Write-Host "($(Get-Date -Format "dddd MM/dd/yyyy HH:mm:ss K")) Clearing the packages directory"
+    Remove-Item "$env:TEMP/chocolateyTests/packages" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item "$env:TEMP/chocolateyTests/all-packages" -Recurse -Force -ErrorAction SilentlyContinue
+  SHELL
+  config.vm.provision "shell", name: "test", inline: <<-SHELL
+    # Copy changed files.
+    $null = robocopy c:/chocoRoot c:/code/choco /e /copy:dt
+    # Purge any tests files that have been removed.
+    $null = robocopy c:/chocoRoot/tests c:/code/choco/tests /e /copy:dt /purge
+    Write-Host "($(Get-Date -Format "dddd MM/dd/yyyy HH:mm:ss K")) Starting Test Execution"
+    Push-Location c:/code/choco
+    # $env:TEST_KITCHEN = 1
+    $env:VM_RUNNING = 1
+    # The Invoke-Tests file will build the packages if the directory does not exist.
+    # This will allow to rerun tests without packaging each time.
+    ./Invoke-Tests.ps1 -SkipPackaging
+    Copy-Item $env:ALLUSERSPROFILE/chocolatey/logs/testInvocations.log C:/vagrant
+  SHELL
+end

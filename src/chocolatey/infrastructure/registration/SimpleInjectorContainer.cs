@@ -1,57 +1,55 @@
-﻿// Copyright © 2017 - 2021 Chocolatey Software, Inc
+﻿// Copyright © 2017 - 2022 Chocolatey Software, Inc
 // Copyright © 2011 - 2017 RealDimensions Software, LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
-// 
+//
 // You may obtain a copy of the License at
-// 
+//
 // 	http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Reflection;
+using chocolatey.infrastructure.app;
+using chocolatey.infrastructure.app.registration;
+using chocolatey.infrastructure.information;
+using chocolatey.infrastructure.licensing;
+using chocolatey.infrastructure.logging;
+using SimpleInjector;
+
 namespace chocolatey.infrastructure.registration
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Reflection;
-    using app;
-    using app.registration;
-    using logging;
-    using SimpleInjector;
-
     /// <summary>
     ///   The inversion container
     /// </summary>
     public static class SimpleInjectorContainer
     {
-        private static readonly Lazy<Container> _container = new Lazy<Container>(initialize);
+        private static readonly Lazy<Container> _container = new Lazy<Container>(Initialize);
         private static readonly IList<Type> _componentRegistries = new List<Type>();
-        private const string REGISTER_COMPONENTS_METHOD = "RegisterComponents";
+        private const string RegisterComponentsMethod = "RegisterComponents";
 
 #if DEBUG
-        private static bool _verifyContainer = true;
+        public static bool VerifyContainer { get; set; } = true;
 #else
-        private static bool _verifyContainer = false;
+        public static bool VerifyContainer { get; set; } = false;
 #endif
-        
-        public static bool VerifyContainer { 
-            get { return _verifyContainer; }
-            set { _verifyContainer = value; } 
-        }
-        
 
         /// <summary>
-        ///   Add a component registry class to the container. 
+        ///   Add a component registry class to the container.
         ///   Must have `public void RegisterComponents(Container container)`
         ///   and a parameterless constructor.
         /// </summary>
         /// <param name="componentType">Type of the component.</param>
-        public static void add_component_registry_class(Type componentType)
+        public static void AddComponentRegistryClass(Type componentType)
         {
             _componentRegistries.Add(componentType);
         }
@@ -64,7 +62,7 @@ namespace chocolatey.infrastructure.registration
         /// <summary>
         ///   Initializes the container
         /// </summary>
-        private static Container initialize()
+        private static Container Initialize()
         {
             var container = new Container();
             container.Options.AllowOverridingRegistrations = true;
@@ -72,14 +70,19 @@ namespace chocolatey.infrastructure.registration
             container.Options.ConstructorResolutionBehavior = new SimpleInjectorContainerResolutionBehavior(originalConstructorResolutionBehavior);
 
             var binding = new ContainerBinding();
-            binding.RegisterComponents(container);
+            var extensions = binding.RegisterComponents(container);
+
+            // TODO: Remove once we can do a breaking release, ie 2.0.0
 
             foreach (var componentRegistry in _componentRegistries)
             {
-                load_component_registry(componentRegistry, container);
+                LoadComponentRegistry(componentRegistry, container, extensions);
             }
 
-            if (_verifyContainer) container.Verify();
+            if (VerifyContainer)
+            {
+                container.Verify();
+            }
 
             return container;
         }
@@ -89,45 +92,61 @@ namespace chocolatey.infrastructure.registration
         /// </summary>
         /// <param name="componentRegistry">The component registry.</param>
         /// <param name="container">The container.</param>
-        private static void load_component_registry(Type componentRegistry, Container container)
+        /// <param name="extensions">Any extension libraries</param>
+        private static void LoadComponentRegistry(Type componentRegistry, Container container, IEnumerable<ExtensionInformation> extensions)
         {
             if (componentRegistry == null)
             {
-                "chocolatey".Log().Warn(ChocolateyLoggers.Important,
-@"Unable to register licensed components. This is likely related to a 
+                if (!extensions.Any(e => e.Name.IsEqualTo("chocolatey.licensed")))
+                {
+                    "chocolatey".Log().Warn(ChocolateyLoggers.Important,
+    @"Unable to register licensed components. This is likely related to a
  missing or outdated licensed DLL.");
+                }
                 return;
             }
             try
             {
-                object componentClass = Activator.CreateInstance(componentRegistry);
+                if (!extensions.Any(e => e.Name.IsEqualTo(componentRegistry.Assembly.GetName().Name)))
+                {
+                    var registrations = container.GetCurrentRegistrations();
 
-                componentRegistry.InvokeMember(
-                    REGISTER_COMPONENTS_METHOD,
-                    BindingFlags.InvokeMethod,
-                    null,
-                    componentClass,
-                    new Object[] { container }
-                    );
+                    var componentClass = Activator.CreateInstance(componentRegistry);
+
+                    componentRegistry.InvokeMember(
+                        RegisterComponentsMethod,
+                        BindingFlags.InvokeMethod,
+                        null,
+                        componentClass,
+                        new object[] { container }
+                        );
+                }
             }
             catch (Exception ex)
             {
-                var isDebug = ApplicationParameters.is_debug_mode_cli_primitive();
+                var isDebug = ApplicationParameters.IsDebugModeCliPrimitive();
                 var message = isDebug ? ex.ToString() : ex.Message;
 
                 if (isDebug && ex.InnerException != null)
                 {
-                    message += "{0}{1}".format_with(Environment.NewLine, ex.InnerException.ToString());
+                    message += "{0}{1}".FormatWith(Environment.NewLine, ex.InnerException.ToString());
                 }
 
                 "chocolatey".Log().Error(
                     ChocolateyLoggers.Important,
-                    @"Error when registering components for '{0}':{1} {2}".format_with(
+                    @"Error when registering components for '{0}':{1} {2}".FormatWith(
                         componentRegistry.FullName,
                         Environment.NewLine,
                         message
                         ));
             }
         }
+
+
+#pragma warning disable IDE0022, IDE1006
+        [Obsolete("This overload is deprecated and will be removed in v3.")]
+        public static void add_component_registry_class(Type componentType)
+            => AddComponentRegistryClass(componentType);
+#pragma warning restore IDE0022, IDE1006
     }
 }

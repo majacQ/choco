@@ -31,7 +31,7 @@ namespace chocolatey.infrastructure.app.templates
 ## If this is an MSI, ensure 'softwareName' is appropriate, then clean up comments and you are done.
 ## If this is an exe, change fileType, silentArgs, and validExitCodes
 
-$ErrorActionPreference = 'Stop'; # stop on all errors
+$ErrorActionPreference = 'Stop' # stop on all errors
 $packageArgs = @{
   packageName   = $env:ChocolateyPackageName
   softwareName  = '[[PackageName]]*'  #part or all of the Display Name as you see it in Programs and Features. It should be enough to be unique
@@ -55,11 +55,6 @@ $packageArgs = @{
   #validExitCodes= @(0) #please insert other valid exit codes here
 }
 
-# Get-UninstallRegistryKey is new to 0.9.10, if supporting 0.9.9.x and below,
-# take a dependency on ""chocolatey-core.extension"" in your nuspec file.
-# This is only a fuzzy search if $softwareName includes '*'. Otherwise it is
-# exact. In the case of versions in key names, we recommend removing the version
-# and using '*'.
 [array]$key = Get-UninstallRegistryKey -SoftwareName $packageArgs['softwareName']
 
 if ($key.Count -eq 1) {
@@ -98,7 +93,7 @@ if ($key.Count -eq 1) {
 ## OTHER POWERSHELL FUNCTIONS
 ## https://docs.chocolatey.org/en-us/create/functions
 #Uninstall-ChocolateyZipPackage $packageName # Only necessary if you did not unpack to package directory - see https://docs.chocolatey.org/en-us/create/functions/uninstall-chocolateyzippackage
-#Uninstall-ChocolateyEnvironmentVariable # 0.9.10+ - https://docs.chocolatey.org/en-us/create/functions/uninstall-chocolateyenvironmentvariable
+#Uninstall-ChocolateyEnvironmentVariable - https://docs.chocolatey.org/en-us/create/functions/uninstall-chocolateyenvironmentvariable
 #Uninstall-BinFile # Only needed if you used Install-BinFile - see https://docs.chocolatey.org/en-us/create/functions/uninstall-binfile
 ## Remove any shortcuts you added in the install script.
 

@@ -14,11 +14,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Xml.Serialization;
+
 namespace chocolatey.infrastructure.app.configuration
 {
-    using System;
-    using System.Xml.Serialization;
-
     /// <summary>
     ///   XML config file features element
     /// </summary>
@@ -46,7 +46,7 @@ namespace chocolatey.infrastructure.app.configuration
                 return false;
             }
 
-            var item = (ConfigFileFeatureSetting) obj;
+            var item = (ConfigFileFeatureSetting)obj;
 
             return (Name == item.Name)
                    && (Enabled == item.Enabled)
@@ -56,11 +56,7 @@ namespace chocolatey.infrastructure.app.configuration
 
         public override int GetHashCode()
         {
-            return HashCode
-                .Of(Name)
-                .And(Enabled)
-                .And(SetExplicitly)
-                .And(Description);
+            return HashCode.Combine(Name, Enabled, SetExplicitly, Description);
         }
     }
 }

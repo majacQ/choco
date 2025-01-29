@@ -85,11 +85,7 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
       <dependency id="""" />
       <dependency id=""chocolatey-core.extension"" version=""1.1.0"" />
     </dependencies>-->
-    <!-- chocolatey-core.extension - https://community.chocolatey.org/packages/chocolatey-core.extension
-         - You want to use Get-UninstallRegistryKey on less than 0.9.10 (in chocolateyUninstall.ps1)
-         - You want to use Get-PackageParameters and on less than 0.11.0
-         - You want to take advantage of other functions in the core community maintainer's team extension package
-    -->
+    <!-- chocolatey-core.extension - https://community.chocolatey.org/packages/chocolatey-core.extension -->
 
     <!--<provides>NOT YET IMPLEMENTED</provides>-->
     <!--<conflicts>NOT YET IMPLEMENTED</conflicts>-->
@@ -98,7 +94,6 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
   <files>
     <!-- this section controls what actually gets packaged into the Chocolatey package -->
     <file src=""tools\**"" target=""tools"" />
-    <!--Building from Linux? You may need this instead: <file src=""tools/**"" target=""tools"" />-->
   </files>
 </package>
 ";

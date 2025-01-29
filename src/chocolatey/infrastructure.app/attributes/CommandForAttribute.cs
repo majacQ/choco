@@ -14,15 +14,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+
 namespace chocolatey.infrastructure.app.attributes
 {
-    using System;
-
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     public class CommandForAttribute : Attribute
     {
         public string CommandName { get; private set; }
         public string Description { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the version a command was introduced in.
+        /// </summary>
+        public string Version { get; set; }
 
         public CommandForAttribute(string commandName, string description)
         {

@@ -26,7 +26,7 @@ namespace chocolatey.infrastructure.app.templates
 # 1. See the _TODO.md that is generated top level and read through that
 # 2. Follow the documentation below to learn how to create a package for the package type you are creating.
 # 3. In Chocolatey scripts, ALWAYS use absolute paths - $toolsDir gets you to the package's tools directory.
-$ErrorActionPreference = 'Stop'; # stop on all errors[[AutomaticPackageNotesInstaller]]
+$ErrorActionPreference = 'Stop' # stop on all errors[[AutomaticPackageNotesInstaller]]
 $toolsDir   = ""$(Split-Path -parent $MyInvocation.MyCommand.Definition)""
 # Internal packages (organizations) or software that has redistribution rights (community repo)
 # - Use `Install-ChocolateyInstallPackage` instead of `Install-ChocolateyPackage`
@@ -49,7 +49,7 @@ $packageArgs = @{
 
   softwareName  = '[[PackageName]]*' #part or all of the Display Name as you see it in Programs and Features. It should be enough to be unique
 
-  # Checksums are now required as of 0.10.0.
+  # Checksums are required for packages which will be hosted on the Chocolatey Community Repository.
   # To determine checksums, you can get that from the original site if provided.
   # You can also use checksum.exe (choco install checksum) and use it
   # e.g. checksum -t sha256 -f path\to\file
@@ -112,7 +112,7 @@ Install-ChocolateyPackage @packageArgs # https://docs.chocolatey.org/en-us/creat
 #Install-ChocolateyInstallPackage $packageName $fileType $silentArgs '_FULLFILEPATH_' -validExitCodes $validExitCodes
 
 ## Unzips a file to the specified location - auto overwrites existing content
-## - https://docs.chocolatey.org/en-us/create/functions/get-chocolateyunzipp
+## - https://docs.chocolatey.org/en-us/create/functions/get-chocolateyunzip
 #Get-ChocolateyUnzip ""FULL_LOCATION_TO_ZIP.zip"" $toolsDir
 
 ## Runs processes asserting UAC, will assert administrative rights - used by Install-ChocolateyInstallPackage
@@ -134,7 +134,7 @@ Install-ChocolateyPackage @packageArgs # https://docs.chocolatey.org/en-us/creat
 ## Add specific files as shortcuts to the desktop
 ## - https://docs.chocolatey.org/en-us/create/functions/install-chocolateyshortcut
 #$target = Join-Path $toolsDir ""$($packageName).exe""
-# Install-ChocolateyShortcut -shortcutFilePath ""<path>"" -targetPath ""<path>"" [-workDirectory ""C:\"" -arguments ""C:\test.txt"" -iconLocation ""C:\test.ico"" -description ""This is the description""]
+# Install-ChocolateyShortcut -shortcutFilePath ""<path>"" -targetPath ""<path>"" [-workingDirectory ""C:\"" -arguments ""C:\test.txt"" -iconLocation ""C:\test.ico"" -description ""This is the description""]
 
 ## Outputs the bitness of the OS (either ""32"" or ""64"")
 ## - https://docs.chocolatey.org/en-us/create/functions/get-osarchitecturewidth
@@ -148,7 +148,7 @@ Install-ChocolateyPackage @packageArgs # https://docs.chocolatey.org/en-us/creat
 ## - https://docs.chocolatey.org/en-us/create/functions/install-chocolateyfileassociation
 #Install-ChocolateyFileAssociation
 
-## Adding a shim when not automatically found - Cocolatey automatically shims exe files found in package directory.
+## Adding a shim when not automatically found - Chocolatey automatically shims exe files found in package directory.
 ## - https://docs.chocolatey.org/en-us/create/functions/install-binfile
 ## - https://docs.chocolatey.org/en-us/create/create-packages#how-do-i-exclude-executables-from-getting-shims
 #Install-BinFile
@@ -157,18 +157,6 @@ Install-ChocolateyPackage @packageArgs # https://docs.chocolatey.org/en-us/creat
 #$toolsDir = ""$(Split-Path -parent $MyInvocation.MyCommand.Definition)""
 # despite the name ""Install-ChocolateyZipPackage"" this also works with 7z archives
 #Install-ChocolateyZipPackage $packageName $url $toolsDir $url64
-## END PORTABLE EXAMPLE
-
-## [DEPRECATING] PORTABLE EXAMPLE
-#$binRoot = Get-BinRoot
-#$installDir = Join-Path $binRoot ""$packageName""
-#Write-Host ""Adding `'$installDir`' to the path and the current shell path""
-#Install-ChocolateyPath ""$installDir""
-#$env:Path = ""$($env:Path);$installDir""
-
-# if removing $url64, please remove from here
-# despite the name ""Install-ChocolateyZipPackage"" this also works with 7z archives
-#Install-ChocolateyZipPackage ""$packageName"" ""$url"" ""$installDir"" ""$url64""
 ## END PORTABLE EXAMPLE
 ";
 
